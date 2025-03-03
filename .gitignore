@@ -1,0 +1,10 @@
+.env
+.venv/
+.vscode/
+# frontend existier schon in einen eigenen repository
+frontend/
+node_modules/
+package*.json
+node_modules
+__pycache__/
+*.pyc

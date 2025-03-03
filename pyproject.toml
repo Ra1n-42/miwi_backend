@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "miwi-backend"
+version = "0.1.0"
+description = "Backend for MiwiTV website"
+authors = ["Joe"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.13"
+fastapi = {extras = ["standard"], version = "^0.115.5"}
+pymysql = "^1.1.1"
+sqlalchemy = "^2.0.36"
+cryptography = "^43.0.3"
+requests = "^2.32.3"
+pyjwt = "^2.10.1"
+httpx = "^0.28.0"
+psycopg = {extras = ["binary", "pool"], version = "^3.2.5"}
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
