@@ -9,7 +9,7 @@ from typing import List, Optional
 from datetime import datetime
 from app.routes.user import check_access_by_role
 from app.utils.time_tracking_logger import log_request_duration, logger
-
+from sqlalchemy import update
 
 class SubItemBase(BaseModel):
     id: Optional[str] = None
@@ -235,6 +235,84 @@ async def get_all_challenges(db: Session = Depends(get_db)):
             status_code=500,
             detail=f"Fehler beim Abrufen der Challenges: {str(e)}"
         )
+class ChallengePageResponse(BaseModel):
+    completed: bool
+
+@router.put("/task/{task_id}")
+async def update_task(
+    task_id: int,
+    taskdata: ChallengePageResponse,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    logger.info(f"/task/{task_id}: {current_user['display_name']} -> {taskdata.completed}[TRY]")
+    db_user = get_db_user(db, user_db_id=current_user.get("user_id"))
+    logger.info(f"/task/{task_id}: {current_user['display_name']} -> [USERFOUND]")
+    check_access_by_role(db_user.role, [0, 1, 2])
+    logger.info(f"/task/{task_id}: {current_user['display_name']} -> {taskdata.completed}[check_access_by_role -> PASS]")
+    try:
+        result = db.execute(
+            update(Item)
+            .where(Item.id == task_id)
+            .values(completed=taskdata.completed)
+        )
+
+        if result.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Subchallenge nicht gefunden")
+
+        db.commit()
+        logger.info(f"/task/{task_id} {current_user["display_name"]} -> {taskdata.completed}")
+        return {"message": "Aufgabe erfolgreich aktualisiert"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=f"Fehler beim Aktualisieren der Aufgbe: {str(e)}")
+
+
+
+@router.put("/subchallenge/{subchallenge_id}")
+async def update_subchallenge(
+    subchallenge_id: int,
+    subtaskdata: ChallengePageResponse,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Aktualisiert den 'completed'-Status einer Subchallenge.
+
+    Args:
+        subchallenge_id (int): Die ID der Subchallenge, die aktualisiert werden soll.
+        completed (bool): Der neue 'completed'-Status (True oder False).
+        db (Session, optional): Die Datenbank-Session. Defaults to Depends(get_db).
+        current_user (dict, optional): Die Informationen des aktuellen Benutzers. Defaults to Depends(get_current_user).
+
+    Raises:
+        HTTPException: 400, wenn ein Fehler beim Aktualisieren der Subchallenge auftritt.
+        HTTPException: 404, wenn die Subchallenge nicht gefunden wird.
+
+    Returns:
+        dict: Eine Nachricht, die bestätigt, dass die Subchallenge erfolgreich aktualisiert wurde.
+    """
+    db_user = get_db_user(db, user_db_id=current_user.get("user_id"))
+    check_access_by_role(db_user.role, [0, 1, 2])
+
+    try:
+        result = db.execute(
+            update(SubChallenge)
+            .where(SubChallenge.id == subchallenge_id)
+            .values(completed=subtaskdata.completed)
+        )
+
+        if result.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Subchallenge nicht gefunden")
+
+        db.commit()
+        logger.info(f"/subchallenge/{subchallenge_id} {current_user["display_name"]} -> {subtaskdata.completed}")
+        return {"message": "Subchallenge erfolgreich aktualisiert"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=f"Fehler beim Aktualisieren der Subchallenge: {str(e)}")
+
+
 
 # 🔄 Challenge aktualisieren
 @router.put("/update/{challenge_id}")

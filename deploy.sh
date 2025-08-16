@@ -4,26 +4,26 @@ set -e
 # Funktion zum Überprüfen, ob Docker läuft
 check_docker() {
     if ! command -v docker &>/dev/null; then
-        echo "🚨 Docker ist nicht installiert. Bitte installiere Docker und versuche es erneut."
+        echo " Docker ist nicht installiert. Bitte installiere Docker und versuche es erneut."
         exit 1
     fi
 
     if ! docker info &>/dev/null; then
-        echo "🚨 Docker Engine läuft nicht. Stelle sicher, dass Docker läuft."
+        echo " Docker Engine läuft nicht. Stelle sicher, dass Docker läuft."
         exit 1
     fi
 }
 
 # Überprüfe, ob Docker läuft
-echo "🔍 Überprüfe Docker..."
+echo " Überprüfe Docker..."
 check_docker
 
 # Zielverzeichnisse und Dateien, die berücksichtigt werden sollen
 TARGETS=(
-  "app"
-  "frontend"
-  "docker-compose.yml"
-  "Dockerfile"
+    "app"
+    "frontend"
+    "docker-compose.yml"
+    "Dockerfile"
 )
 
 # Muster für zu ignorierende Dateien/Ordner (z.B. node_modules, __pycache__)
@@ -56,7 +56,7 @@ if [ -f "$OLD_CHECKSUM_FILE" ]; then
         NEW_HASH=$(grep "^$TARGET:" "$NEW_CHECKSUM_FILE" | cut -d':' -f2)
 
         if [ "$OLD_HASH" != "$NEW_HASH" ]; then
-            echo "🔄 Änderungen in $TARGET erkannt!"
+            echo " Änderungen in $TARGET erkannt!"
             CHANGED_SERVICES+=("$TARGET")
         fi
     done < "$OLD_CHECKSUM_FILE"
@@ -64,24 +64,21 @@ if [ -f "$OLD_CHECKSUM_FILE" ]; then
     if [ ${#CHANGED_SERVICES[@]} -eq 0 ]; then
         echo "✅ Keine Änderungen festgestellt. Build & Push übersprungen."
     else
-        # Speichere die neue Checksum-Datei als Basis für den nächsten Vergleich
-        cp "$NEW_CHECKSUM_FILE" "$OLD_CHECKSUM_FILE"
-
         # Build und Push nur für geänderte Services
         for SERVICE in "${CHANGED_SERVICES[@]}"; do
             case $SERVICE in
                 "app")
-                    echo "🚀 Baue und pushe Backend (app)..."
+                    echo " Baue und pushe Backend (app)..."
                     docker-compose build app_backend
                     docker push ghcr.io/ra1n-42/miwi/app_backend:latest
                     ;;
                 "frontend")
-                    echo "🚀 Baue und pushe Frontend..."
+                    echo " Baue und pushe Frontend..."
                     docker-compose build frontend
                     docker push ghcr.io/ra1n-42/miwi/frontend:latest
                     ;;
                 "docker-compose.yml" | "Dockerfile")
-                    echo "🚀 Änderungen an Docker-Konfiguration erkannt. Baue alle Images neu..."
+                    echo " Änderungen an Docker-Konfiguration erkannt. Baue alle Images neu..."
                     docker-compose build
                     docker push ghcr.io/ra1n-42/miwi/app_backend:latest
                     docker push ghcr.io/ra1n-42/miwi/frontend:latest
@@ -89,14 +86,18 @@ if [ -f "$OLD_CHECKSUM_FILE" ]; then
                     ;;
             esac
         done
+        # Speichere die neue Checksum-Datei als Basis für den nächsten Vergleich, erst nach erfolgreichem Build.
+        cp "$NEW_CHECKSUM_FILE" "$OLD_CHECKSUM_FILE"
     fi
 else
     echo "Keine alte Checksum-Datei gefunden. Starte erstmaligen Build & Push..."
-    cp "$NEW_CHECKSUM_FILE" "$OLD_CHECKSUM_FILE"
 
     docker-compose build
     docker push ghcr.io/ra1n-42/miwi/app_backend:latest
     docker push ghcr.io/ra1n-42/miwi/frontend:latest
+
+    # Speichere die neue Checksum-Datei als Basis für den nächsten Vergleich, erst nach erfolgreichem Build.
+    cp "$NEW_CHECKSUM_FILE" "$OLD_CHECKSUM_FILE"
 fi
 
 # Aufräumen

@@ -1,8 +1,8 @@
 import os
 
 class Twitch:
-    DEV = True
-
+    DEV = False
+    
     if DEV:
         # Dev
         CLIENT_ID = os.getenv("DEV_CLIENT_ID")
